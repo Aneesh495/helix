@@ -1,0 +1,23 @@
+# Build and dependency directories
+/_build/
+/deps/
+*.beam
+.fetch
+
+# Documentation and coverage
+/cover/
+/doc/
+
+# Logs and runtime artifacts
+*.log
+erl_crash.dump
+priv/data/
+priv/wal/
+
+# OS and editor files
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
