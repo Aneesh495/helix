@@ -1,12 +1,12 @@
 defmodule Helix.Core.SparseMerkleTree do
   @moduledoc """
-  Authenticated Sparse Merkle Tree (SMT) with 256-bit key paths and SHA-256 hashing.
+  Authenticated Sparse Merkle Tree (SMT) with 256-bit key paths and SHA-256 tree hashing.
   Provides cryptographic state commitments, non-interactive inclusion proofs,
-  and non-inclusion exclusion proofs.
+  and non-inclusion exclusion proofs with O(log N) cached branch hashing.
   """
 
   @depth 256
-  @empty_leaf :crypto.hash(:sha256, "helix:smt:empty:leaf")
+  @empty_node_hash :crypto.hash(:sha256, "helix:smt:empty:node")
 
   defstruct [
     root: :empty,
@@ -22,19 +22,6 @@ defmodule Helix.Core.SparseMerkleTree do
           depth: non_neg_integer()
         }
 
-  # Precompute default empty hashes from height 0 up to 256
-  @default_hashes (
-    Enum.reduce(0..256, %{0 => @empty_leaf}, fn level, acc ->
-      if level == 0 do
-        acc
-      else
-        prev = Map.fetch!(acc, level - 1)
-        h = :crypto.hash(:sha256, <<2::8>> <> prev <> prev)
-        Map.put(acc, level, h)
-      end
-    end)
-  )
-
   @doc """
   Initializes a new empty Sparse Merkle Tree.
   """
@@ -42,19 +29,17 @@ defmodule Helix.Core.SparseMerkleTree do
   def new do
     %__MODULE__{
       root: :empty,
-      root_hash: default_hash(@depth),
+      root_hash: @empty_node_hash,
       leaves: %{},
       depth: @depth
     }
   end
 
   @doc """
-  Returns the default empty hash at the specified height.
+  Returns the empty node sentinel hash.
   """
-  @spec default_hash(non_neg_integer()) :: binary()
-  def default_hash(level) do
-    Map.get(@default_hashes, level, @empty_leaf)
-  end
+  @spec empty_hash() :: binary()
+  def empty_hash, do: @empty_node_hash
 
   @doc """
   Computes the 256-bit binary path for an arbitrary key.
@@ -87,7 +72,7 @@ defmodule Helix.Core.SparseMerkleTree do
 
   @doc """
   Inserts or updates a key-value pair in the SMT, returning the updated tree
-  with recomputed root hash.
+  with cached root hash.
   """
   @spec put(t(), binary(), term()) :: t()
   def put(%__MODULE__{} = tree, key, value) when is_binary(key) do
@@ -95,8 +80,8 @@ defmodule Helix.Core.SparseMerkleTree do
     val_hash = hash_value(value)
 
     new_leaves = Map.put(tree.leaves, key_path, {val_hash, value})
-    new_root = insert_node(tree.root, key_path, val_hash, 0, tree.depth)
-    new_root_hash = compute_node_hash(new_root, tree.depth)
+    new_root = insert_node(tree.root, key_path, val_hash, 0)
+    new_root_hash = node_hash(new_root)
 
     %{tree | root: new_root, root_hash: new_root_hash, leaves: new_leaves}
   end
@@ -110,8 +95,8 @@ defmodule Helix.Core.SparseMerkleTree do
 
     if Map.has_key?(tree.leaves, key_path) do
       new_leaves = Map.delete(tree.leaves, key_path)
-      new_root = delete_node(tree.root, key_path, 0, tree.depth)
-      new_root_hash = compute_node_hash(new_root, tree.depth)
+      new_root = delete_node(tree.root, key_path, 0)
+      new_root_hash = node_hash(new_root)
 
       %{tree | root: new_root, root_hash: new_root_hash, leaves: new_leaves}
     else
@@ -126,104 +111,90 @@ defmodule Helix.Core.SparseMerkleTree do
   def root_hash(%__MODULE__{root_hash: rh}), do: rh
 
   # Internal recursive insertion
-  defp insert_node(:empty, key_path, val_hash, _depth, _max_depth) do
-    {:leaf, key_path, val_hash}
+  defp insert_node(:empty, key_path, val_hash, _depth) do
+    h = compute_leaf_hash(key_path, val_hash)
+    {:leaf, h, key_path, val_hash}
   end
 
-  defp insert_node({:leaf, existing_path, existing_val_hash}, key_path, val_hash, depth, max_depth) do
+  defp insert_node({:leaf, _h, existing_path, existing_val_hash}, key_path, val_hash, depth) do
     if existing_path == key_path do
-      {:leaf, key_path, val_hash}
+      h = compute_leaf_hash(key_path, val_hash)
+      {:leaf, h, key_path, val_hash}
     else
       bit_existing = get_bit(existing_path, depth)
       bit_new = get_bit(key_path, depth)
 
       if bit_existing == bit_new do
-        child = insert_node({:leaf, existing_path, existing_val_hash}, key_path, val_hash, depth + 1, max_depth)
+        child = insert_node({:leaf, compute_leaf_hash(existing_path, existing_val_hash), existing_path, existing_val_hash}, key_path, val_hash, depth + 1)
 
         if bit_existing == 0 do
-          {:branch, child, :empty}
+          make_branch(child, :empty)
         else
-          {:branch, :empty, child}
+          make_branch(:empty, child)
         end
       else
+        leaf_existing = {:leaf, compute_leaf_hash(existing_path, existing_val_hash), existing_path, existing_val_hash}
+        leaf_new = {:leaf, compute_leaf_hash(key_path, val_hash), key_path, val_hash}
+
         if bit_existing == 0 do
-          {:branch, {:leaf, existing_path, existing_val_hash}, {:leaf, key_path, val_hash}}
+          make_branch(leaf_existing, leaf_new)
         else
-          {:branch, {:leaf, key_path, val_hash}, {:leaf, existing_path, existing_val_hash}}
+          make_branch(leaf_new, leaf_existing)
         end
       end
     end
   end
 
-  defp insert_node({:branch, left, right}, key_path, val_hash, depth, max_depth) do
+  defp insert_node({:branch, _h, left, right}, key_path, val_hash, depth) do
     bit = get_bit(key_path, depth)
 
     if bit == 0 do
-      new_left = insert_node(left, key_path, val_hash, depth + 1, max_depth)
-      {:branch, new_left, right}
+      new_left = insert_node(left, key_path, val_hash, depth + 1)
+      make_branch(new_left, right)
     else
-      new_right = insert_node(right, key_path, val_hash, depth + 1, max_depth)
-      {:branch, left, new_right}
+      new_right = insert_node(right, key_path, val_hash, depth + 1)
+      make_branch(left, new_right)
     end
   end
 
   # Internal recursive deletion
-  defp delete_node(:empty, _key_path, _depth, _max_depth), do: :empty
+  defp delete_node(:empty, _key_path, _depth), do: :empty
 
-  defp delete_node({:leaf, path, val_hash}, key_path, _depth, _max_depth) do
-    if path == key_path, do: :empty, else: {:leaf, path, val_hash}
+  defp delete_node({:leaf, h, path, val_hash}, key_path, _depth) do
+    if path == key_path, do: :empty, else: {:leaf, h, path, val_hash}
   end
 
-  defp delete_node({:branch, left, right}, key_path, depth, max_depth) do
+  defp delete_node({:branch, _h, left, right}, key_path, depth) do
     bit = get_bit(key_path, depth)
 
     new_branch =
       if bit == 0 do
-        {:branch, delete_node(left, key_path, depth + 1, max_depth), right}
+        make_branch(delete_node(left, key_path, depth + 1), right)
       else
-        {:branch, left, delete_node(right, key_path, depth + 1, max_depth)}
+        make_branch(left, delete_node(right, key_path, depth + 1))
       end
 
     case new_branch do
-      {:branch, :empty, :empty} -> :empty
-      {:branch, {:leaf, _, _} = leaf, :empty} -> leaf
-      {:branch, :empty, {:leaf, _, _} = leaf} -> leaf
+      {:branch, _, :empty, :empty} -> :empty
+      {:branch, _, {:leaf, _, _, _} = leaf, :empty} -> leaf
+      {:branch, _, :empty, {:leaf, _, _, _} = leaf} -> leaf
       other -> other
     end
   end
 
-  @doc """
-  Computes the cryptographic hash of a subtree at the given remaining height.
-  """
-  def compute_node_hash(:empty, height) do
-    default_hash(height)
+  defp make_branch(left, right) do
+    hl = node_hash(left)
+    hr = node_hash(right)
+    h = :crypto.hash(:sha256, <<2::8>> <> hl <> hr)
+    {:branch, h, left, right}
   end
 
-  def compute_node_hash({:leaf, path, val_hash}, 0) do
+  def node_hash(:empty), do: @empty_node_hash
+  def node_hash({:leaf, h, _path, _val_hash}), do: h
+  def node_hash({:branch, h, _left, _right}), do: h
+
+  def compute_leaf_hash(path, val_hash) do
     :crypto.hash(:sha256, <<1::8>> <> path <> val_hash)
-  end
-
-  def compute_node_hash({:leaf, path, val_hash}, height) when height > 0 do
-    # When a leaf is stored above height 0 (due to path compression),
-    # compute its position down to height 0
-    depth = @depth - height
-    bit = get_bit(path, depth)
-
-    if bit == 0 do
-      left_h = compute_node_hash({:leaf, path, val_hash}, height - 1)
-      right_h = default_hash(height - 1)
-      :crypto.hash(:sha256, <<2::8>> <> left_h <> right_h)
-    else
-      left_h = default_hash(height - 1)
-      right_h = compute_node_hash({:leaf, path, val_hash}, height - 1)
-      :crypto.hash(:sha256, <<2::8>> <> left_h <> right_h)
-    end
-  end
-
-  def compute_node_hash({:branch, left, right}, height) when height > 0 do
-    h_left = compute_node_hash(left, height - 1)
-    h_right = compute_node_hash(right, height - 1)
-    :crypto.hash(:sha256, <<2::8>> <> h_left <> h_right)
   end
 
   @doc """

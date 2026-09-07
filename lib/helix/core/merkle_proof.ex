@@ -28,8 +28,6 @@ defmodule Helix.Core.MerkleProof do
 
   @doc """
   Generates a Merkle audit proof for a given key in the SMT.
-  If the key exists, generates an inclusion proof.
-  If the key does not exist, generates a non-inclusion (exclusion) proof.
   """
   @spec generate(SMT.t(), binary()) :: t()
   def generate(%SMT{} = tree, key) when is_binary(key) do
@@ -42,7 +40,7 @@ defmodule Helix.Core.MerkleProof do
         :not_found -> {nil, nil, true}
       end
 
-    siblings = collect_siblings_down(tree.root, key_path, 0, tree.depth)
+    siblings = collect_siblings(tree.root, key_path, 0)
 
     %__MODULE__{
       key: key,
@@ -57,19 +55,16 @@ defmodule Helix.Core.MerkleProof do
 
   @doc """
   Verifies a Merkle proof against a trusted root hash.
-  Returns {:ok, root_hash} if the proof is valid, or {:error, reason} otherwise.
   """
   @spec verify(t(), binary()) :: {:ok, binary()} | {:error, atom()}
   def verify(%__MODULE__{} = proof, expected_root_hash) do
     target_leaf_hash =
       if proof.non_membership do
-        SMT.default_hash(0)
+        SMT.empty_hash()
       else
-        :crypto.hash(:sha256, <<1::8>> <> proof.key_path <> proof.value_hash)
+        SMT.compute_leaf_hash(proof.key_path, proof.value_hash)
       end
 
-    # Sibling list was collected from root (depth 0) down to leaves (depth 255).
-    # Verification ascends from height 0 up to height 256.
     ascending_siblings = Enum.reverse(proof.siblings)
 
     computed_root =
@@ -90,53 +85,27 @@ defmodule Helix.Core.MerkleProof do
     end
   end
 
-  defp collect_siblings_down(_node, _key_path, depth, max_depth) when depth >= max_depth do
-    []
-  end
+  defp collect_siblings(:empty, _key_path, _depth), do: []
 
-  defp collect_siblings_down(:empty, key_path, depth, max_depth) do
-    remaining_height = max_depth - 1 - depth
-    bit = SMT.get_bit(key_path, depth)
-    side = if bit == 0, do: :right, else: :left
-    sibling_hash = SMT.default_hash(remaining_height)
-
-    [{side, sibling_hash} | collect_siblings_down(:empty, key_path, depth + 1, max_depth)]
-  end
-
-  defp collect_siblings_down({:leaf, path, val_hash}, key_path, depth, max_depth) do
-    remaining_height = max_depth - 1 - depth
-    bit = SMT.get_bit(key_path, depth)
-
+  defp collect_siblings({:leaf, h, path, _val_hash}, key_path, depth) do
     if path == key_path do
-      side = if bit == 0, do: :right, else: :left
-      sibling_hash = SMT.default_hash(remaining_height)
-      [{side, sibling_hash} | collect_siblings_down({:leaf, path, val_hash}, key_path, depth + 1, max_depth)]
+      []
     else
-      # Conflicting leaf in sparse trie
-      other_bit = SMT.get_bit(path, depth)
-
-      if other_bit == bit do
-        side = if bit == 0, do: :right, else: :left
-        sibling_hash = SMT.default_hash(remaining_height)
-        [{side, sibling_hash} | collect_siblings_down({:leaf, path, val_hash}, key_path, depth + 1, max_depth)]
-      else
-        side = if bit == 0, do: :right, else: :left
-        sibling_hash = SMT.compute_node_hash({:leaf, path, val_hash}, remaining_height)
-        [{side, sibling_hash} | collect_siblings_down(:empty, key_path, depth + 1, max_depth)]
-      end
+      bit = SMT.get_bit(key_path, depth)
+      side = if bit == 0, do: :right, else: :left
+      [{side, h}]
     end
   end
 
-  defp collect_siblings_down({:branch, left, right}, key_path, depth, max_depth) do
-    remaining_height = max_depth - 1 - depth
+  defp collect_siblings({:branch, _h, left, right}, key_path, depth) do
     bit = SMT.get_bit(key_path, depth)
 
     if bit == 0 do
-      sibling_hash = SMT.compute_node_hash(right, remaining_height)
-      [{:right, sibling_hash} | collect_siblings_down(left, key_path, depth + 1, max_depth)]
+      sibling_hash = SMT.node_hash(right)
+      [{:right, sibling_hash} | collect_siblings(left, key_path, depth + 1)]
     else
-      sibling_hash = SMT.compute_node_hash(left, remaining_height)
-      [{:left, sibling_hash} | collect_siblings_down(right, key_path, depth + 1, max_depth)]
+      sibling_hash = SMT.node_hash(left)
+      [{:left, sibling_hash} | collect_siblings(right, key_path, depth + 1)]
     end
   end
 end
