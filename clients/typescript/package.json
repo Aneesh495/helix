@@ -1,0 +1,15 @@
+{
+  "name": "@helix/client",
+  "version": "0.1.0",
+  "description": "TypeScript client driver for the Helix distributed transaction kernel",
+  "main": "dist/client.js",
+  "types": "dist/client.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "author": "Aneesh Krishna",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
