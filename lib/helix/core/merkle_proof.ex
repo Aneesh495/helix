@@ -2,6 +2,7 @@ defmodule Helix.Core.MerkleProof do
   @moduledoc """
   Cryptographic inclusion and non-inclusion proof generation and verification
   for the Helix Sparse Merkle Tree.
+  Supports both empty-slot non-membership and conflicting-leaf exclusion proofs.
   """
 
   alias Helix.Core.SparseMerkleTree, as: SMT
@@ -13,6 +14,8 @@ defmodule Helix.Core.MerkleProof do
     :value_hash,
     :root_hash,
     :siblings,
+    :conflicting_path,
+    :conflicting_val_hash,
     non_membership: false
   ]
 
@@ -23,6 +26,8 @@ defmodule Helix.Core.MerkleProof do
           value_hash: binary() | nil,
           root_hash: binary(),
           siblings: list({:left | :right, binary()}),
+          conflicting_path: binary() | nil,
+          conflicting_val_hash: binary() | nil,
           non_membership: boolean()
         }
 
@@ -40,7 +45,13 @@ defmodule Helix.Core.MerkleProof do
         :not_found -> {nil, nil, true}
       end
 
-    siblings = collect_siblings(tree.root, key_path, 0)
+    {siblings, conflict_info} = collect_proof_path(tree.root, key_path, 0)
+
+    {conf_path, conf_val_hash} =
+      case conflict_info do
+        {:conflict, cp, cvh} -> {cp, cvh}
+        _ -> {nil, nil}
+      end
 
     %__MODULE__{
       key: key,
@@ -49,6 +60,8 @@ defmodule Helix.Core.MerkleProof do
       value_hash: val_hash,
       root_hash: tree.root_hash,
       siblings: siblings,
+      conflicting_path: conf_path,
+      conflicting_val_hash: conf_val_hash,
       non_membership: non_member
     }
   end
@@ -58,54 +71,69 @@ defmodule Helix.Core.MerkleProof do
   """
   @spec verify(t(), binary()) :: {:ok, binary()} | {:error, atom()}
   def verify(%__MODULE__{} = proof, expected_root_hash) do
-    target_leaf_hash =
-      if proof.non_membership do
-        SMT.empty_hash()
-      else
-        SMT.compute_leaf_hash(proof.key_path, proof.value_hash)
+    target_start_hash =
+      cond do
+        proof.non_membership and proof.conflicting_path != nil ->
+          if proof.conflicting_path == proof.key_path do
+            :invalid_exclusion
+          else
+            SMT.compute_leaf_hash(proof.conflicting_path, proof.conflicting_val_hash)
+          end
+
+        proof.non_membership ->
+          SMT.empty_hash()
+
+        true ->
+          SMT.compute_leaf_hash(proof.key_path, proof.value_hash)
       end
 
-    ascending_siblings = Enum.reverse(proof.siblings)
-
-    computed_root =
-      Enum.reduce(ascending_siblings, target_leaf_hash, fn {side, sibling_hash}, current_hash ->
-        case side do
-          :right ->
-            :crypto.hash(:sha256, <<2::8>> <> current_hash <> sibling_hash)
-
-          :left ->
-            :crypto.hash(:sha256, <<2::8>> <> sibling_hash <> current_hash)
-        end
-      end)
-
-    if computed_root == expected_root_hash do
-      {:ok, computed_root}
+    if target_start_hash == :invalid_exclusion do
+      {:error, :invalid_exclusion_proof}
     else
-      {:error, :root_hash_mismatch}
+      ascending_siblings = Enum.reverse(proof.siblings)
+
+      computed_root =
+        Enum.reduce(ascending_siblings, target_start_hash, fn {side, sibling_hash}, current_hash ->
+          case side do
+            :right ->
+              :crypto.hash(:sha256, <<2::8>> <> current_hash <> sibling_hash)
+
+            :left ->
+              :crypto.hash(:sha256, <<2::8>> <> sibling_hash <> current_hash)
+          end
+        end)
+
+      if computed_root == expected_root_hash do
+        {:ok, computed_root}
+      else
+        {:error, :root_hash_mismatch}
+      end
     end
   end
 
-  defp collect_siblings(:empty, _key_path, _depth), do: []
+  defp collect_proof_path(:empty, _key_path, _depth) do
+    {[], :empty}
+  end
 
-  defp collect_siblings({:leaf, h, path, _val_hash}, key_path, depth) do
+  defp collect_proof_path({:leaf, _h, path, val_hash}, key_path, _depth) do
     if path == key_path do
-      []
+      {[], :exact}
     else
-      bit = SMT.get_bit(key_path, depth)
-      side = if bit == 0, do: :right, else: :left
-      [{side, h}]
+      {[], {:conflict, path, val_hash}}
     end
   end
 
-  defp collect_siblings({:branch, _h, left, right}, key_path, depth) do
+  defp collect_proof_path({:branch, _h, left, right}, key_path, depth) do
     bit = SMT.get_bit(key_path, depth)
 
     if bit == 0 do
       sibling_hash = SMT.node_hash(right)
-      [{:right, sibling_hash} | collect_siblings(left, key_path, depth + 1)]
+      {sub_siblings, outcome} = collect_proof_path(left, key_path, depth + 1)
+      {[{:right, sibling_hash} | sub_siblings], outcome}
     else
       sibling_hash = SMT.node_hash(left)
-      [{:left, sibling_hash} | collect_siblings(right, key_path, depth + 1)]
+      {sub_siblings, outcome} = collect_proof_path(right, key_path, depth + 1)
+      {[{:left, sibling_hash} | sub_siblings], outcome}
     end
   end
 end
