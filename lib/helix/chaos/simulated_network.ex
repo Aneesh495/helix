@@ -4,14 +4,12 @@ defmodule Helix.Chaos.SimulatedNetwork do
   jitter delay, and duplicate message delivery.
   """
 
-  defstruct [
-    partitions: MapSet.new(),
-    drop_rate: 0.0,
-    duplicate_rate: 0.0,
-    min_delay_ticks: 0,
-    max_delay_ticks: 0,
-    seed: 42
-  ]
+  defstruct partitions: MapSet.new(),
+            drop_rate: 0.0,
+            duplicate_rate: 0.0,
+            min_delay_ticks: 0,
+            max_delay_ticks: 0,
+            seed: 42
 
   @type node_id :: term()
   @type t :: %__MODULE__{
@@ -91,6 +89,7 @@ defmodule Helix.Chaos.SimulatedNetwork do
         :dropped
       else
         dup? = :rand.uniform() < net.duplicate_rate
+
         delay =
           if net.max_delay_ticks > net.min_delay_ticks do
             net.min_delay_ticks + :rand.uniform(net.max_delay_ticks - net.min_delay_ticks)

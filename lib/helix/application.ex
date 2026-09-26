@@ -31,7 +31,13 @@ defmodule Helix.Application do
 
     Enum.each(tables, fn name ->
       if :ets.whereis(name) == :undefined do
-        :ets.new(name, [:named_table, :public, :set, read_concurrency: true, write_concurrency: true])
+        :ets.new(name, [
+          :named_table,
+          :public,
+          :set,
+          read_concurrency: true,
+          write_concurrency: true
+        ])
       end
     end)
   end

@@ -7,7 +7,8 @@ defmodule Helix.Core.Types do
   @type instance_seq :: non_neg_integer()
   @type instance_id :: {replica_id(), instance_seq()}
 
-  @type ballot :: {epoch :: non_neg_integer(), num :: non_neg_integer(), replica_id :: replica_id()}
+  @type ballot ::
+          {epoch :: non_neg_integer(), num :: non_neg_integer(), replica_id :: replica_id()}
 
   @type key :: binary()
   @type value :: binary() | term()

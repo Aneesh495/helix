@@ -5,10 +5,8 @@ defmodule Helix.STM.DependencyTracker do
   which successor transactions require re-validation when an earlier writer aborts.
   """
 
-  defstruct [
-    tx_readers: %{},
-    tx_writers: %{}
-  ]
+  defstruct tx_readers: %{},
+            tx_writers: %{}
 
   @type tx_index :: integer()
   @type t :: %__MODULE__{
@@ -31,10 +29,14 @@ defmodule Helix.STM.DependencyTracker do
   def record_read(%__MODULE__{} = tracker, reader_idx, writer_idx) do
     if writer_idx >= 0 and reader_idx != writer_idx do
       current_readers = Map.get(tracker.tx_readers, writer_idx, MapSet.new())
-      new_readers = Map.put(tracker.tx_readers, writer_idx, MapSet.put(current_readers, reader_idx))
+
+      new_readers =
+        Map.put(tracker.tx_readers, writer_idx, MapSet.put(current_readers, reader_idx))
 
       current_writers = Map.get(tracker.tx_writers, reader_idx, MapSet.new())
-      new_writers = Map.put(tracker.tx_writers, reader_idx, MapSet.put(current_writers, writer_idx))
+
+      new_writers =
+        Map.put(tracker.tx_writers, reader_idx, MapSet.put(current_writers, writer_idx))
 
       %{tracker | tx_readers: new_readers, tx_writers: new_writers}
     else

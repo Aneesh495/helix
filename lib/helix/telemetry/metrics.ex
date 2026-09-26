@@ -4,20 +4,18 @@ defmodule Helix.Telemetry.Metrics do
   Calculates percentiles (p50, p95, p99, p99.9) and fast-path consensus ratios.
   """
 
-  defstruct [
-    latencies: [],
-    counters: %{
-      fast_path_commits: 0,
-      slow_path_commits: 0,
-      stm_aborts: 0,
-      stm_commits: 0,
-      gossip_messages: 0
-    },
-    gauges: %{
-      active_instances: 0,
-      cluster_size: 1
-    }
-  ]
+  defstruct latencies: [],
+            counters: %{
+              fast_path_commits: 0,
+              slow_path_commits: 0,
+              stm_aborts: 0,
+              stm_commits: 0,
+              gossip_messages: 0
+            },
+            gauges: %{
+              active_instances: 0,
+              cluster_size: 1
+            }
 
   @type t :: %__MODULE__{
           latencies: [non_neg_integer()],
@@ -117,7 +115,7 @@ defmodule Helix.Telemetry.Metrics do
     if total == 0 do
       100.0
     else
-      Float.round((fast / total) * 100.0, 2)
+      Float.round(fast / total * 100.0, 2)
     end
   end
 end

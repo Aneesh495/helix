@@ -42,7 +42,10 @@ defmodule Helix.Net.Codec do
     {:error, :incomplete}
   end
 
-  def decode(<<@magic::binary, version::8, opcode::16, correlation_id::64, payload_len::32, crc::32, rest::binary>>) do
+  def decode(
+        <<@magic::binary, version::8, opcode::16, correlation_id::64, payload_len::32, crc::32,
+          rest::binary>>
+      ) do
     if version != @version do
       {:error, :unsupported_version}
     else

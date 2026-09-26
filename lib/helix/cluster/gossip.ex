@@ -4,10 +4,8 @@ defmodule Helix.Cluster.Gossip do
   Disseminates membership events and state digests across the cluster mesh in O(log N) periods.
   """
 
-  defstruct [
-    events: %{},
-    max_retransmissions: 5
-  ]
+  defstruct events: %{},
+            max_retransmissions: 5
 
   @type event_type :: :alive | :suspect | :dead | :crdt_delta
   @type event_item :: {event_type(), binary(), non_neg_integer(), term()}

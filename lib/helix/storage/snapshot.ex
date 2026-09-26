@@ -57,8 +57,8 @@ defmodule Helix.Storage.Snapshot do
     payload_len = byte_size(payload)
     crc = CRC32C.checksum(payload)
 
-    <<@magic::binary, @version::16, snap.smt_root::binary-size(32), snap.seq::64, crc::32, payload_len::32,
-      payload::binary>>
+    <<@magic::binary, @version::16, snap.smt_root::binary-size(32), snap.seq::64, crc::32,
+      payload_len::32, payload::binary>>
   end
 
   @doc """
@@ -67,8 +67,8 @@ defmodule Helix.Storage.Snapshot do
   """
   @spec deserialize(binary()) :: {:ok, t()} | {:error, term()}
   def deserialize(
-        <<@magic::binary, @version::16, smt_root::binary-size(32), seq::64, crc::32, payload_len::32,
-          payload::binary-size(payload_len)>>
+        <<@magic::binary, @version::16, smt_root::binary-size(32), seq::64, crc::32,
+          payload_len::32, payload::binary-size(payload_len)>>
       ) do
     actual_crc = CRC32C.checksum(payload)
 

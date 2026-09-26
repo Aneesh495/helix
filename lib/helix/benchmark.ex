@@ -61,6 +61,7 @@ defmodule Helix.Benchmark do
     IO.write("[Benchmark] Benchmarking Block-STM Parallel vs Sequential Execution... ")
 
     count = 200
+
     commands =
       for i <- 1..count do
         Types.make_command("tx_#{i}", [{:write, "key_#{rem(i, 20)}", i * 10}])
@@ -75,15 +76,25 @@ defmodule Helix.Benchmark do
     # Calculate throughput
     parallel_tps = trunc(count / (t_parallel_us / 1_000_000))
 
-    IO.puts("DONE [#{parallel_tps} TPS, committed #{stats.transactions_committed} txs across #{stats.waves} waves]")
+    IO.puts(
+      "DONE [#{parallel_tps} TPS, committed #{stats.transactions_committed} txs across #{stats.waves} waves]"
+    )
   end
 
   defp bench_crdt_throughput do
     IO.write("[Benchmark] Benchmarking Delta-CRDT Merge Throughput... ")
 
     count = 5000
-    c1 = Enum.reduce(1..count, PNCounter.new(), fn i, acc -> PNCounter.increment(acc, "n_#{rem(i, 5)}", 1) end)
-    c2 = Enum.reduce(1..count, PNCounter.new(), fn i, acc -> PNCounter.decrement(acc, "n_#{rem(i, 5)}", 1) end)
+
+    c1 =
+      Enum.reduce(1..count, PNCounter.new(), fn i, acc ->
+        PNCounter.increment(acc, "n_#{rem(i, 5)}", 1)
+      end)
+
+    c2 =
+      Enum.reduce(1..count, PNCounter.new(), fn i, acc ->
+        PNCounter.decrement(acc, "n_#{rem(i, 5)}", 1)
+      end)
 
     {t_merge_us, _merged} =
       :timer.tc(fn ->

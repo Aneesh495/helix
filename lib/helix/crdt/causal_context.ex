@@ -76,7 +76,8 @@ defmodule Helix.CRDT.CausalContext do
   """
   @spec merge(t(), t()) :: t()
   def merge(%__MODULE__{} = cc1, %__MODULE__{} = cc2) do
-    all_nodes = MapSet.union(MapSet.new(Map.keys(cc1.max_dots)), MapSet.new(Map.keys(cc2.max_dots)))
+    all_nodes =
+      MapSet.union(MapSet.new(Map.keys(cc1.max_dots)), MapSet.new(Map.keys(cc2.max_dots)))
 
     merged_max =
       Enum.reduce(all_nodes, %{}, fn node, acc ->
@@ -98,9 +99,13 @@ defmodule Helix.CRDT.CausalContext do
       end)
 
     # Fold sparse dots that can now be compacted
-    Enum.reduce(filtered_sparse, %__MODULE__{max_dots: merged_max, sparse_dots: MapSet.new()}, fn {n, c}, acc_cc ->
-      add_dot(acc_cc, n, c)
-    end)
+    Enum.reduce(
+      filtered_sparse,
+      %__MODULE__{max_dots: merged_max, sparse_dots: MapSet.new()},
+      fn {n, c}, acc_cc ->
+        add_dot(acc_cc, n, c)
+      end
+    )
   end
 
   defp advance_max(cc, node_id, current_max) do

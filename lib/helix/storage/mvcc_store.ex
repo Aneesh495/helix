@@ -6,9 +6,7 @@ defmodule Helix.Storage.MVCCStore do
 
   alias Helix.Core.Types
 
-  defstruct [
-    records: %{}
-  ]
+  defstruct records: %{}
 
   @type timestamp :: non_neg_integer()
   @type version_entry :: {timestamp(), term()}

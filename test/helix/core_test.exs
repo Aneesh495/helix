@@ -56,7 +56,12 @@ defmodule Helix.CoreTest do
 
     test "detects excessive clock drift" do
       hlc = HLC.new("node_a", max_drift: 1_000_000)
-      future_ts = %{node_id: "node_b", physical: System.system_time(:microsecond) + 5_000_000, logical: 0}
+
+      future_ts = %{
+        node_id: "node_b",
+        physical: System.system_time(:microsecond) + 5_000_000,
+        logical: 0
+      }
 
       assert {:error, :clock_drift_exceeded} = HLC.recv_event(hlc, future_ts)
     end

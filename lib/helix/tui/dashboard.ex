@@ -55,7 +55,7 @@ defmodule Helix.TUI.Dashboard do
 
     \e[1;35m[BLOCK-STM OPTIMISTIC PARALLEL EXECUTION]\e[0m
       Committed Tx      : #{metrics.counters.stm_commits}                 Speculative Aborts: #{metrics.counters.stm_aborts}
-      Contention Rate   : #{if metrics.counters.stm_commits > 0, do: Float.round((metrics.counters.stm_aborts / (metrics.counters.stm_commits + metrics.counters.stm_aborts)) * 100, 2), else: 0.0}%
+      Contention Rate   : #{if metrics.counters.stm_commits > 0, do: Float.round(metrics.counters.stm_aborts / (metrics.counters.stm_commits + metrics.counters.stm_aborts) * 100, 2), else: 0.0}%
 
     \e[1;34m[LATENCY HISTOGRAM (MICROSECONDS)]\e[0m
       p50 : #{p.p50} us    p95 : #{p.p95} us    p99 : #{p.p99} us    p99.9 : #{p.p999} us
@@ -90,7 +90,7 @@ defmodule Helix.TUI.Dashboard do
 
     rendered =
       Enum.map(recent, fn v ->
-        idx = min(7, trunc(((v - min_v) / range) * 7))
+        idx = min(7, trunc((v - min_v) / range * 7))
         Enum.at(bars, idx)
       end)
       |> Enum.join("")

@@ -16,7 +16,13 @@ defmodule Helix.Storage.MemoryEngine do
   @spec new(atom()) :: t()
   def new(table_name \\ :helix_storage_memory) do
     if :ets.whereis(table_name) == :undefined do
-      :ets.new(table_name, [:named_table, :public, :set, read_concurrency: true, write_concurrency: true])
+      :ets.new(table_name, [
+        :named_table,
+        :public,
+        :set,
+        read_concurrency: true,
+        write_concurrency: true
+      ])
     end
 
     %__MODULE__{table_name: table_name}

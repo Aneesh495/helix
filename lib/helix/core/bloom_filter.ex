@@ -28,7 +28,7 @@ defmodule Helix.Core.BloomFilter do
     m = -1 * (expected_items * :math.log(false_positive_rate)) / (ln2 * ln2)
     size_bits = max(64, trunc(:math.ceil(m)))
     # k = (m / n) * ln(2)
-    k = max(1, round((size_bits / expected_items) * ln2))
+    k = max(1, round(size_bits / expected_items * ln2))
 
     size_bytes = div(size_bits + 7, 8)
     bitmap = :binary.copy(<<0>>, size_bytes)
@@ -71,7 +71,11 @@ defmodule Helix.Core.BloomFilter do
   Performs bitwise union of two identical dimension Bloom filters.
   """
   @spec union(t(), t()) :: t()
-  def union(%__MODULE__{size_bits: s, num_hashes: k, bitmap: b1}, %__MODULE__{size_bits: s, num_hashes: k, bitmap: b2}) do
+  def union(%__MODULE__{size_bits: s, num_hashes: k, bitmap: b1}, %__MODULE__{
+        size_bits: s,
+        num_hashes: k,
+        bitmap: b2
+      }) do
     # Bitwise OR across all bytes
     merged =
       :erlang.binary_to_list(b1)

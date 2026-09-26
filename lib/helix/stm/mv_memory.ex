@@ -6,10 +6,8 @@ defmodule Helix.STM.MVMemory do
 
   alias Helix.Core.Types
 
-  defstruct [
-    base_state: %{},
-    versions: %{}
-  ]
+  defstruct base_state: %{},
+            versions: %{}
 
   @type tx_index :: integer()
   @type incarnation :: non_neg_integer()

@@ -9,21 +9,19 @@ defmodule Helix.Core.CRC32C do
   @polynomial 0x82F63B78
 
   # Generate 256-entry lookup table at compile time
-  @table (
-    for i <- 0..255 do
-      crc =
-        Enum.reduce(0..7, i, fn _bit, acc ->
-          if band(acc, 1) == 1 do
-            bxor(bsr(acc, 1), @polynomial)
-          else
-            bsr(acc, 1)
-          end
-        end)
+  @table (for i <- 0..255 do
+            crc =
+              Enum.reduce(0..7, i, fn _bit, acc ->
+                if band(acc, 1) == 1 do
+                  bxor(bsr(acc, 1), @polynomial)
+                else
+                  bsr(acc, 1)
+                end
+              end)
 
-      crc
-    end
-    |> List.to_tuple()
-  )
+            crc
+          end)
+         |> List.to_tuple()
 
   @doc """
   Computes the 32-bit CRC-32C Castagnoli checksum of a binary.

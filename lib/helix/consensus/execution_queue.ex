@@ -21,7 +21,10 @@ defmodule Helix.Consensus.ExecutionQueue do
   @type t :: %__MODULE__{
           subscriber: pid() | nil,
           graph: ConflictGraph.t(),
-          committed: %{Types.instance_id() => {Types.command(), non_neg_integer(), MapSet.t(Types.instance_id())}},
+          committed: %{
+            Types.instance_id() =>
+              {Types.command(), non_neg_integer(), MapSet.t(Types.instance_id())}
+          },
           executed_ids: MapSet.t(Types.instance_id()),
           execution_order: [Types.instance_id()]
         }

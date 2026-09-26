@@ -87,11 +87,21 @@ defmodule Helix.CRDTTest do
     test "supports nested CRDTs with key addition and removal" do
       map1 =
         ORMap.new()
-        |> ORMap.put_crdt("counter_key", PNCounter, PNCounter.new() |> PNCounter.increment("n1", 5), "n1")
+        |> ORMap.put_crdt(
+          "counter_key",
+          PNCounter,
+          PNCounter.new() |> PNCounter.increment("n1", 5),
+          "n1"
+        )
 
       map2 =
         ORMap.new()
-        |> ORMap.put_crdt("counter_key", PNCounter, PNCounter.new() |> PNCounter.increment("n2", 7), "n2")
+        |> ORMap.put_crdt(
+          "counter_key",
+          PNCounter,
+          PNCounter.new() |> PNCounter.increment("n2", 7),
+          "n2"
+        )
 
       merged = ORMap.merge(map1, map2)
       assert ORMap.value(merged) == %{"counter_key" => 12}
@@ -123,7 +133,10 @@ defmodule Helix.CRDTTest do
       ReplicationEngine.register_crdt(engine2, :hits, PNCounter, PNCounter.new())
 
       # Update on engine1
-      {:ok, 42} = ReplicationEngine.update_crdt(engine1, :hits, fn c -> PNCounter.increment(c, "node_1", 42) end)
+      {:ok, 42} =
+        ReplicationEngine.update_crdt(engine1, :hits, fn c ->
+          PNCounter.increment(c, "node_1", 42)
+        end)
 
       # Trigger sync broadcast
       ReplicationEngine.sync_now(engine1)

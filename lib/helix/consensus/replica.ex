@@ -32,7 +32,7 @@ defmodule Helix.Consensus.Replica do
           instances: %{Types.instance_id() => Instance.t()},
           conflict_detector: ConflictDetector.t(),
           ballot: Ballot.t(),
-          transport_fn: ((term(), term()) -> any()) | nil
+          transport_fn: (term(), term() -> any()) | nil
         }
 
   # Client API
@@ -163,7 +163,9 @@ defmodule Helix.Consensus.Replica do
 
     if local_inst == nil or Ballot.dominates?(ballot, local_inst.ballot) do
       # Peer calculates its local conflicts
-      {local_deps, local_seq} = ConflictDetector.find_conflicts(state.conflict_detector, cmd, inst_id)
+      {local_deps, local_seq} =
+        ConflictDetector.find_conflicts(state.conflict_detector, cmd, inst_id)
+
       merged_deps = MapSet.union(deps, local_deps)
       merged_seq = max(seq, local_seq)
 
@@ -207,7 +209,14 @@ defmodule Helix.Consensus.Replica do
             committed_inst = Instance.transition_to_committed(updated_inst, inst.seq, inst.deps)
             commit_msg = {:commit, state.replica_id, inst_id, inst.command, inst.seq, inst.deps}
             broadcast_to_peers(state, commit_msg)
-            notify_execution_queue(state.execution_queue, inst_id, inst.command, inst.seq, inst.deps)
+
+            notify_execution_queue(
+              state.execution_queue,
+              inst_id,
+              inst.command,
+              inst.seq,
+              inst.deps
+            )
 
             if inst.caller, do: GenServer.reply(inst.caller, {:ok, inst_id, :committed})
 
@@ -229,7 +238,10 @@ defmodule Helix.Consensus.Replica do
             # Record self accept
             accepted_inst = Instance.record_accept_reply(accepted_inst, state.replica_id)
 
-            accept_msg = {:accept, state.replica_id, inst_id, state.ballot, inst.command, final_seq, final_deps}
+            accept_msg =
+              {:accept, state.replica_id, inst_id, state.ballot, inst.command, final_seq,
+               final_deps}
+
             broadcast_to_peers(state, accept_msg)
 
             new_instances = Map.put(state.instances, inst_id, accepted_inst)
@@ -280,7 +292,14 @@ defmodule Helix.Consensus.Replica do
           committed_inst = Instance.transition_to_committed(updated_inst, inst.seq, inst.deps)
           commit_msg = {:commit, state.replica_id, inst_id, inst.command, inst.seq, inst.deps}
           broadcast_to_peers(state, commit_msg)
-          notify_execution_queue(state.execution_queue, inst_id, inst.command, inst.seq, inst.deps)
+
+          notify_execution_queue(
+            state.execution_queue,
+            inst_id,
+            inst.command,
+            inst.seq,
+            inst.deps
+          )
 
           if inst.caller, do: GenServer.reply(inst.caller, {:ok, inst_id, :committed})
 

@@ -29,9 +29,13 @@ defmodule Helix.Consensus.Recovery do
       if length(accepted_replies) > 0 do
         # Select the accepted reply with the highest ballot
         highest =
-          Enum.max_by(accepted_replies, fn r ->
-            r.ballot
-          end, fn b1, b2 -> Ballot.compare(b1, b2) != :gt end)
+          Enum.max_by(
+            accepted_replies,
+            fn r ->
+              r.ballot
+            end,
+            fn b1, b2 -> Ballot.compare(b1, b2) != :gt end
+          )
 
         {:accept, highest.cmd, highest.seq, highest.deps}
       else
@@ -52,7 +56,10 @@ defmodule Helix.Consensus.Recovery do
           else
             # Differing preaccepts: take union of deps and max seq
             max_seq = Enum.map(preaccepted_replies, & &1.seq) |> Enum.max()
-            merged_deps = Enum.reduce(preaccepted_replies, MapSet.new(), &MapSet.union(&2, &1.deps))
+
+            merged_deps =
+              Enum.reduce(preaccepted_replies, MapSet.new(), &MapSet.union(&2, &1.deps))
+
             {:accept, first.cmd, max_seq, merged_deps}
           end
         else

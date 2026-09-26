@@ -4,11 +4,9 @@ defmodule Helix.Cluster.Partitioner do
   and replica quorum placement.
   """
 
-  defstruct [
-    vnodes_per_node: 64,
-    ring: [],
-    nodes: MapSet.new()
-  ]
+  defstruct vnodes_per_node: 64,
+            ring: [],
+            nodes: MapSet.new()
 
   @type token :: non_neg_integer()
   @type node_id :: binary()

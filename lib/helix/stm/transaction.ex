@@ -26,7 +26,7 @@ defmodule Helix.STM.Transaction do
           id: binary(),
           index: tx_index(),
           command: Types.command() | nil,
-          exec_fn: ((term()) -> term()) | nil,
+          exec_fn: (term() -> term()) | nil,
           incarnation: incarnation(),
           status: status(),
           read_set: %{Types.key() => {integer(), incarnation(), term()}},
@@ -37,7 +37,7 @@ defmodule Helix.STM.Transaction do
   @doc """
   Initializes a new transaction for block scheduling.
   """
-  @spec new(binary(), tx_index(), Types.command() | nil, ((term()) -> term()) | nil) :: t()
+  @spec new(binary(), tx_index(), Types.command() | nil, (term() -> term()) | nil) :: t()
   def new(id, index, command \\ nil, exec_fn \\ nil) do
     %__MODULE__{
       id: id,

@@ -116,7 +116,15 @@ defmodule Helix.STM.Engine do
               abort_and_rollback(new_txs, invalid_idx, new_mem, new_tracker)
 
             new_stats = Map.update!(stats, :aborts, &(&1 + 1))
-            run_stm_loop(invalidated_txs, rolled_back_mem, rolled_back_tracker, wave + 1, max_retries, new_stats)
+
+            run_stm_loop(
+              invalidated_txs,
+              rolled_back_mem,
+              rolled_back_tracker,
+              wave + 1,
+              max_retries,
+              new_stats
+            )
         end
       end
     end

@@ -6,10 +6,8 @@ defmodule Helix.Stream.Pattern do
 
   alias Helix.Stream.Event
 
-  defstruct [
-    stages: [],
-    within_ms: nil
-  ]
+  defstruct stages: [],
+            within_ms: nil
 
   @type stage :: %{
           name: atom(),
@@ -63,7 +61,15 @@ defmodule Helix.Stream.Pattern do
       bindings = %{first_stage.name => start_event}
       subsequent_events = Enum.filter(events, &(&1.timestamp > start_event.timestamp))
 
-      completed = find_subsequent_stages(remaining_stages, subsequent_events, start_event.timestamp, within, bindings)
+      completed =
+        find_subsequent_stages(
+          remaining_stages,
+          subsequent_events,
+          start_event.timestamp,
+          within,
+          bindings
+        )
+
       matches ++ completed
     end)
   end

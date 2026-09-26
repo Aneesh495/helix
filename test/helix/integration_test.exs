@@ -13,6 +13,7 @@ defmodule Helix.IntegrationTest do
     test "executes full EPaxos, parallel Block-STM, and SMT state authentication" do
       # 1. Cluster network transport
       table_name = :integration_net_table
+
       if :ets.whereis(table_name) == :undefined do
         :ets.new(table_name, [:named_table, :public, :set])
       end
@@ -27,6 +28,7 @@ defmodule Helix.IntegrationTest do
         case SimulatedNetwork.route_packet(current_net, from_node, target) do
           {:deliver, _delay, _dup?} ->
             target_atom = if is_atom(target), do: target, else: String.to_atom(target)
+
             case Process.whereis(target_atom) do
               pid when is_pid(pid) -> send(pid, {:msg, msg})
               nil -> :ok
@@ -42,14 +44,43 @@ defmodule Helix.IntegrationTest do
       {:ok, q2} = ExecutionQueue.start_link()
       {:ok, q3} = ExecutionQueue.start_link()
 
-      {:ok, r1} = Replica.start_link(name: :integ_r1, replica_id: "integ_r1", peers: ["integ_r2", "integ_r3"], execution_queue: q1, transport_fn: transport_fn)
-      {:ok, r2} = Replica.start_link(name: :integ_r2, replica_id: "integ_r2", peers: ["integ_r1", "integ_r3"], execution_queue: q2, transport_fn: transport_fn)
-      {:ok, r3} = Replica.start_link(name: :integ_r3, replica_id: "integ_r3", peers: ["integ_r1", "integ_r2"], execution_queue: q3, transport_fn: transport_fn)
+      {:ok, r1} =
+        Replica.start_link(
+          name: :integ_r1,
+          replica_id: "integ_r1",
+          peers: ["integ_r2", "integ_r3"],
+          execution_queue: q1,
+          transport_fn: transport_fn
+        )
+
+      {:ok, r2} =
+        Replica.start_link(
+          name: :integ_r2,
+          replica_id: "integ_r2",
+          peers: ["integ_r1", "integ_r3"],
+          execution_queue: q2,
+          transport_fn: transport_fn
+        )
+
+      {:ok, r3} =
+        Replica.start_link(
+          name: :integ_r3,
+          replica_id: "integ_r3",
+          peers: ["integ_r1", "integ_r2"],
+          execution_queue: q3,
+          transport_fn: transport_fn
+        )
 
       # 3. Submit concurrent transactions across different nodes
       cmd1 = Types.make_command("tx_fund_1", [{:write, "wallet:alice", 1000}])
       cmd2 = Types.make_command("tx_fund_2", [{:write, "wallet:bob", 500}])
-      cmd3 = Types.make_command("tx_transfer", [{:read, "wallet:alice"}, {:write, "wallet:alice", 800}, {:write, "wallet:bob", 700}])
+
+      cmd3 =
+        Types.make_command("tx_transfer", [
+          {:read, "wallet:alice"},
+          {:write, "wallet:alice", 800},
+          {:write, "wallet:bob", 700}
+        ])
 
       # Propose concurrently from node 1, 2, and 3
       task1 = Task.async(fn -> Replica.propose(r1, cmd1) end)

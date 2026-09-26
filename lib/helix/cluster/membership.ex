@@ -28,7 +28,7 @@ defmodule Helix.Cluster.Membership do
           ping_interval_ms: pos_integer(),
           ping_timeout_ms: pos_integer(),
           suspect_timeout_ms: pos_integer(),
-          transport_fn: ((term(), term()) -> any()) | nil,
+          transport_fn: (term(), term() -> any()) | nil,
           subscriber: pid() | nil
         }
 
@@ -100,7 +100,10 @@ defmodule Helix.Cluster.Membership do
   @impl true
   def handle_call({:join, %CNode{} = peer}, _from, state) do
     new_members = Map.put(state.members, peer.id, peer)
-    new_gossip = Gossip.add_event(state.gossip, "join:#{peer.id}", {:alive, peer.id, peer.incarnation, peer})
+
+    new_gossip =
+      Gossip.add_event(state.gossip, "join:#{peer.id}", {:alive, peer.id, peer.incarnation, peer})
+
     {:reply, :ok, %{state | members: new_members, gossip: new_gossip}}
   end
 
@@ -150,7 +153,9 @@ defmodule Helix.Cluster.Membership do
       %CNode{status: :suspect, incarnation: ^inc} = node ->
         dead_node = CNode.mark_dead(node)
         new_members = Map.put(state.members, target_id, dead_node)
-        new_gossip = Gossip.add_event(state.gossip, "dead:#{target_id}", {:dead, target_id, inc, nil})
+
+        new_gossip =
+          Gossip.add_event(state.gossip, "dead:#{target_id}", {:dead, target_id, inc, nil})
 
         if state.subscriber do
           send(state.subscriber, {:node_dead, target_id})

@@ -72,7 +72,8 @@ defmodule Helix.Stream.Window do
     initial_session = {[first], first.timestamp, first.timestamp}
 
     {sessions, final_session} =
-      Enum.reduce(rest, {[], initial_session}, fn event, {acc_sessions, {cur_evs, s_start, s_end}} ->
+      Enum.reduce(rest, {[], initial_session}, fn event,
+                                                  {acc_sessions, {cur_evs, s_start, s_end}} ->
         if event.timestamp - s_end > gap_ms do
           # Gap exceeded: close current session and start new
           completed = {{s_start, s_end}, Enum.reverse(cur_evs)}
@@ -88,7 +89,7 @@ defmodule Helix.Stream.Window do
         {evs, start_ts, end_ts} -> {{start_ts, end_ts}, Enum.reverse(evs)}
       end
 
-    Enum.reverse([ {last_range, last_evs} | sessions ])
+    Enum.reverse([{last_range, last_evs} | sessions])
   end
 
   @doc """

@@ -4,10 +4,8 @@ defmodule Helix.Chaos.VirtualClock do
   Allows reproducible time advancement and discrete tick scheduling without real-world pauses.
   """
 
-  defstruct [
-    current_time: 0,
-    scheduled_events: []
-  ]
+  defstruct current_time: 0,
+            scheduled_events: []
 
   @type event_item :: {time :: non_neg_integer(), id :: term(), (-> any())}
   @type t :: %__MODULE__{
@@ -56,6 +54,7 @@ defmodule Helix.Chaos.VirtualClock do
       cb.()
     end)
 
-    {length(ready_events), %{clock | current_time: target_time, scheduled_events: remaining_events}}
+    {length(ready_events),
+     %{clock | current_time: target_time, scheduled_events: remaining_events}}
   end
 end

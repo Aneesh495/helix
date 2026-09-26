@@ -37,7 +37,13 @@ defmodule Helix.Consensus.Instance do
   @doc """
   Initializes a new instance in preaccepted state.
   """
-  @spec new(instance_id(), Types.command() | nil, Ballot.t(), Types.replica_id(), GenServer.from() | nil) :: t()
+  @spec new(
+          instance_id(),
+          Types.command() | nil,
+          Ballot.t(),
+          Types.replica_id(),
+          GenServer.from() | nil
+        ) :: t()
   def new(id, command, ballot, leader, caller \\ nil) do
     %__MODULE__{
       id: id,

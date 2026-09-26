@@ -5,9 +5,7 @@ defmodule Helix.Chaos.LinearizabilityChecker do
   can be linearized into a legal sequential execution satisfying real-time precedence.
   """
 
-  defstruct [
-    history: []
-  ]
+  defstruct history: []
 
   @type op_type :: :read | :write
   @type operation :: %{
@@ -23,7 +21,8 @@ defmodule Helix.Chaos.LinearizabilityChecker do
   Verifies whether an operation history on a single register/key is linearizable.
   Returns {:ok, linearized_history} or {:error, :non_linearizable}.
   """
-  @spec check_register([operation()], term()) :: {:ok, [operation()]} | {:error, :non_linearizable}
+  @spec check_register([operation()], term()) ::
+          {:ok, [operation()]} | {:error, :non_linearizable}
   def check_register(operations, initial_state \\ nil) when is_list(operations) do
     # Sort operations by invocation time
     sorted_ops = Enum.sort_by(operations, & &1.invoke_time)
@@ -54,7 +53,13 @@ defmodule Helix.Chaos.LinearizabilityChecker do
     {:error, :non_linearizable}
   end
 
-  defp search_candidates([candidate | rest_candidates], remaining_ops, linearized_acc, current_state, visited_ids) do
+  defp search_candidates(
+         [candidate | rest_candidates],
+         remaining_ops,
+         linearized_acc,
+         current_state,
+         visited_ids
+       ) do
     case apply_op(candidate, current_state) do
       {:ok, next_state} ->
         new_remaining = Enum.reject(remaining_ops, &(&1.id == candidate.id))
@@ -66,11 +71,23 @@ defmodule Helix.Chaos.LinearizabilityChecker do
             {:ok, result}
 
           {:error, :non_linearizable} ->
-            search_candidates(rest_candidates, remaining_ops, linearized_acc, current_state, visited_ids)
+            search_candidates(
+              rest_candidates,
+              remaining_ops,
+              linearized_acc,
+              current_state,
+              visited_ids
+            )
         end
 
       :illegal ->
-        search_candidates(rest_candidates, remaining_ops, linearized_acc, current_state, visited_ids)
+        search_candidates(
+          rest_candidates,
+          remaining_ops,
+          linearized_acc,
+          current_state,
+          visited_ids
+        )
     end
   end
 

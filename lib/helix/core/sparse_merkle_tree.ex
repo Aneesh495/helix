@@ -8,12 +8,10 @@ defmodule Helix.Core.SparseMerkleTree do
   @depth 256
   @empty_node_hash :crypto.hash(:sha256, "helix:smt:empty:node")
 
-  defstruct [
-    root: :empty,
-    root_hash: nil,
-    leaves: %{},
-    depth: @depth
-  ]
+  defstruct root: :empty,
+            root_hash: nil,
+            leaves: %{},
+            depth: @depth
 
   @type t :: %__MODULE__{
           root: :empty | term(),
@@ -125,7 +123,14 @@ defmodule Helix.Core.SparseMerkleTree do
       bit_new = get_bit(key_path, depth)
 
       if bit_existing == bit_new do
-        child = insert_node({:leaf, compute_leaf_hash(existing_path, existing_val_hash), existing_path, existing_val_hash}, key_path, val_hash, depth + 1)
+        child =
+          insert_node(
+            {:leaf, compute_leaf_hash(existing_path, existing_val_hash), existing_path,
+             existing_val_hash},
+            key_path,
+            val_hash,
+            depth + 1
+          )
 
         if bit_existing == 0 do
           make_branch(child, :empty)
@@ -133,7 +138,10 @@ defmodule Helix.Core.SparseMerkleTree do
           make_branch(:empty, child)
         end
       else
-        leaf_existing = {:leaf, compute_leaf_hash(existing_path, existing_val_hash), existing_path, existing_val_hash}
+        leaf_existing =
+          {:leaf, compute_leaf_hash(existing_path, existing_val_hash), existing_path,
+           existing_val_hash}
+
         leaf_new = {:leaf, compute_leaf_hash(key_path, val_hash), key_path, val_hash}
 
         if bit_existing == 0 do

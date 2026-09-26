@@ -30,6 +30,7 @@ defmodule Helix.Chaos.ScenarioRunner do
 
     # Set up 3 replicas with simulated network
     table_name = :chaos_network_table
+
     if :ets.whereis(table_name) == :undefined do
       :ets.new(table_name, [:named_table, :public, :set])
     end
@@ -44,6 +45,7 @@ defmodule Helix.Chaos.ScenarioRunner do
       case SimulatedNetwork.route_packet(current_net, from_node, target) do
         {:deliver, _delay, _dup?} ->
           target_atom = if is_atom(target), do: target, else: String.to_atom(target)
+
           case Process.whereis(target_atom) do
             pid when is_pid(pid) -> send(pid, {:msg, msg})
             nil -> :ok
@@ -58,9 +60,32 @@ defmodule Helix.Chaos.ScenarioRunner do
     {:ok, q2} = ExecutionQueue.start_link()
     {:ok, q3} = ExecutionQueue.start_link()
 
-    {:ok, r1} = Replica.start_link(name: :c_r1, replica_id: "c_r1", peers: ["c_r2", "c_r3"], execution_queue: q1, transport_fn: transport_fn)
-    {:ok, r2} = Replica.start_link(name: :c_r2, replica_id: "c_r2", peers: ["c_r1", "c_r3"], execution_queue: q2, transport_fn: transport_fn)
-    {:ok, r3} = Replica.start_link(name: :c_r3, replica_id: "c_r3", peers: ["c_r1", "c_r2"], execution_queue: q3, transport_fn: transport_fn)
+    {:ok, r1} =
+      Replica.start_link(
+        name: :c_r1,
+        replica_id: "c_r1",
+        peers: ["c_r2", "c_r3"],
+        execution_queue: q1,
+        transport_fn: transport_fn
+      )
+
+    {:ok, r2} =
+      Replica.start_link(
+        name: :c_r2,
+        replica_id: "c_r2",
+        peers: ["c_r1", "c_r3"],
+        execution_queue: q2,
+        transport_fn: transport_fn
+      )
+
+    {:ok, r3} =
+      Replica.start_link(
+        name: :c_r3,
+        replica_id: "c_r3",
+        peers: ["c_r1", "c_r2"],
+        execution_queue: q3,
+        transport_fn: transport_fn
+      )
 
     # 1. Partition minority node c_r3 from majority {c_r1, c_r2}
     partitioned_net = SimulatedNetwork.partition(net, ["c_r3"], ["c_r1", "c_r2"])

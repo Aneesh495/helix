@@ -33,8 +33,13 @@ defmodule Helix.Consensus.ConflictDetector do
   Finds all conflicting instances for a proposed command, returning the dependency set
   and the minimum valid sequence number (1 + max(seq of conflicting instances)).
   """
-  @spec find_conflicts(t(), Types.command(), instance_id()) :: {MapSet.t(instance_id()), non_neg_integer()}
-  def find_conflicts(%__MODULE__{} = detector, %{read_keys: reads, write_keys: writes}, current_id) do
+  @spec find_conflicts(t(), Types.command(), instance_id()) ::
+          {MapSet.t(instance_id()), non_neg_integer()}
+  def find_conflicts(
+        %__MODULE__{} = detector,
+        %{read_keys: reads, write_keys: writes},
+        current_id
+      ) do
     # Conflicts for reads: any prior writer to this key
     read_conflicts =
       Enum.flat_map(reads, fn key ->

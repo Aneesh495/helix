@@ -24,7 +24,7 @@ defmodule Helix.CRDT.ReplicationEngine do
           crdts: %{term() => {module(), term()}},
           peer_frontiers: %{term() => VectorClock.t()},
           sync_interval_ms: pos_integer(),
-          broadcast_fn: ((term(), term()) -> any()) | nil
+          broadcast_fn: (term(), term() -> any()) | nil
         }
 
   # Client API

@@ -7,10 +7,8 @@ defmodule Helix.Cluster.Router do
   alias Helix.Core.Types
   alias Helix.Cluster.Partitioner
 
-  defstruct [
-    partitioner: nil,
-    replication_factor: 3
-  ]
+  defstruct partitioner: nil,
+            replication_factor: 3
 
   @type t :: %__MODULE__{
           partitioner: Partitioner.t(),
@@ -46,7 +44,8 @@ defmodule Helix.Cluster.Router do
   @doc """
   Finds the designated coordinator replica for a command based on its primary write or read key.
   """
-  @spec route_command(t(), Types.command()) :: {:ok, binary(), [binary()]} | {:error, :no_keys | :empty_ring}
+  @spec route_command(t(), Types.command()) ::
+          {:ok, binary(), [binary()]} | {:error, :no_keys | :empty_ring}
   def route_command(%__MODULE__{} = router, %{write_keys: [primary_key | _]}) do
     resolve_key_route(router, primary_key)
   end

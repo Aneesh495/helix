@@ -93,7 +93,8 @@ defmodule Helix.Core.MerkleProof do
       ascending_siblings = Enum.reverse(proof.siblings)
 
       computed_root =
-        Enum.reduce(ascending_siblings, target_start_hash, fn {side, sibling_hash}, current_hash ->
+        Enum.reduce(ascending_siblings, target_start_hash, fn {side, sibling_hash},
+                                                              current_hash ->
           case side do
             :right ->
               :crypto.hash(:sha256, <<2::8>> <> current_hash <> sibling_hash)
