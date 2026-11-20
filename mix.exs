@@ -21,6 +21,10 @@ defmodule Helix.MixProject do
     ]
   end
 
+  def cli do
+    [preferred_envs: [verify: :test]]
+  end
+
   defp deps do
     []
   end

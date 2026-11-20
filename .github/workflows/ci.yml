@@ -1,0 +1,19 @@
+name: CI
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: '25.3'
+          elixir-version: '1.15.8'
+      - run: mix verify
+      - run: python3 clients/python/test_client.py
+      - run: make -C c_src && ./c_src/helix_crc_test
