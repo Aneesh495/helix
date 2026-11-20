@@ -311,6 +311,8 @@ mix test
 mix chaos
 ```
 
+Run both checks with `mix verify`.
+
 ### 3. Run Performance Benchmarks
 ```bash
 mix bench
